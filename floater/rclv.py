@@ -470,10 +470,30 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
     else:
         proj = False
 
+    if use_pool=='Threads' or use_pool==True:
+        from multiprocessing.pool import ThreadPool
+        pool = ThreadPool()
+        map_function = pool.imap_unordered
+    elif use_pool=='Process':
+        from multiprocessing import Pool
+        import os
+        ncores = len(os.sched_getaffinity(0)) # Real number of cores
+        pool = Pool(ncores)
+        map_function=pool.imap_unordered
+    else:
+        try:
+            from itertools import imap
+            map_function = imap
+        except ImportError:
+            # must be python 3
+            map_function = map
+
     plm = peak_local_max(data, min_distance=min_distance)
 
     # function to map
     def maybe_contour_maximum(ji):
+        global contour_maximum
+
         tic = time()
         result = None
         if proj:
@@ -497,30 +517,12 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
         logger.debug("point " + repr(tuple(ji)) + " took %g s" % (toc-tic))
         return result
 
-    if use_pool=='Threads' or use_pool==True:
-        from multiprocessing.pool import ThreadPool
-        pool = ThreadPool()
-        map_function = pool.imap_unordered
-    elif use_pool=='Process':
-        from multiprocessing import Pool
-        import os
-        ncores = len(os.sched_getaffinity(0)) # Real number of cores
-        pool = Pool(ncores)
-        map_function=pool.imap_unordered
-    else:
-        try:
-            from itertools import imap
-            map_function = imap
-        except ImportError:
-            # must be python 3
-            map_function = map
-
     if progress:
         from tqdm import tqdm
     else:
         tqdm = _DummyTqdm
     with tqdm(total=len(plm)) as pbar:
-        for item in map_function(maybe_contour_maximum, plm):
+        for item in map_function(contour_maximum, plm):
             pbar.update(1)
             if item is not None:
                 yield item
