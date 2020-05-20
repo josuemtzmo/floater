@@ -464,7 +464,7 @@ def find_convex_contours():
         self.lon = lon 
         self.lat = lat
         self.progress = progress
-        self.contour_kwargs = **contour_kwargs
+        self.contour_kwargs = contour_kwargs
     
 
     def compute(self):
