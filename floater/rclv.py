@@ -470,7 +470,7 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
     else:
         proj = False
 
-    if use_pool=='Threads' or use_pool:
+    if use_pool=='Threads' or use_pool==True:
         from multiprocessing.pool import ThreadPool
         pool = ThreadPool()
         map_function = pool.imap_unordered
