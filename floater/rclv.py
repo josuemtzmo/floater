@@ -408,9 +408,10 @@ def convex_contour_around_maximum(data, ji, init_contour_step_frac=0.1,
     return contour, region_area, cd
 
 
-def find_convex_contours():
-    """
-    Find the outermost convex contours around the maxima of
+def find_convex_contours(data, min_distance=5, min_area=100.,
+                             use_pool=False, lon=None, lat=None,
+                             progress=False, **contour_kwargs):
+    """Find the outermost convex contours around the maxima of
     data with specified convexity deficiency.
 
     Parameters
@@ -454,92 +455,78 @@ def find_convex_contours():
     cd : float
         The actual convexity deficiency of the identified contour
     """
-    def __init__(self,data, min_distance=5, min_area=100.,
-                             use_pool=False, lon=None, lat=None,
-                             progress=False, **contour_kwargs):
-        self.data = data
-        self.md   =  min_distance
-        self.ma   =  min_area
-        self.use_pool = use_pool
-        self.lon = lon 
-        self.lat = lat
-        self.progress = progress
-        self.contour_kwargs = contour_kwargs
-    
 
-    def compute(self):
-       """
-       Compute identification of contours
-       """
-        # do some checks on the coordinates if they are specified
-        if (self.lon is not None) or (self.lat is not None):
-            if not ((len(self.lat) == self.data.shape[0]) and (len(self.lon) == self.data.shape[1])):
-                raise ValueError('`lon` or `lat` have the incorrect length')
-            dlon = self.lon[1] - self.lon[0]
-            dlat = self.lat[1] - self.lat[0]
-            # make sure that the lon and lat are evenly spaced
-            if not (np.allclose(np.diff(lon), dlon) and
-                    np.allclose(np.diff(lat), dlat)):
-                raise ValueError('`lon` and `lat` need to be evenly spaced')
-            self.proj = True
-        else:
-            self.proj = False
+    # do some checks on the coordinates if they are specified
+    if (lon is not None) or (lat is not None):
+        if not ((len(lat) == data.shape[0]) and (len(lon) == data.shape[1])):
+            raise ValueError('`lon` or `lat` have the incorrect length')
+        dlon = lon[1] - lon[0]
+        dlat = lat[1] - lat[0]
+        # make sure that the lon and lat are evenly spaced
+        if not (np.allclose(np.diff(lon), dlon) and
+                np.allclose(np.diff(lat), dlat)):
+            raise ValueError('`lon` and `lat` need to be evenly spaced')
+        proj = True
+    else:
+        proj = False
 
-        if self.use_pool=='Threads' or self.use_pool==True:
-            from multiprocessing.pool import ThreadPool
-            self.pool = ThreadPool()
-            map_function = self.pool.imap_unordered
-        elif use_pool=='Process':
-            from multiprocessing import Pool
-            import os
-            global maybe_contour_maximum
-            ncores = len(os.sched_getaffinity(0)) # Real number of cores
-            self.pool = Pool(ncores)
-            map_function=self.pool.imap_unordered
-        else:
-            try:
-                from itertools import imap
-                map_function = imap
-            except ImportError:
-                # must be python 3
-                map_function = map
+    if use_pool=='Threads' or use_pool==True:
+        from multiprocessing.pool import ThreadPool
+        pool = ThreadPool()
+        map_function = pool.imap_unordered
+    elif use_pool=='Process':
+        from multiprocessing import Pool
+        import os
+        global maybe_contour_maximum
+        ncores = len(os.sched_getaffinity(0)) # Real number of cores
+        pool = Pool(ncores)
+        map_function=pool.imap_unordered
+    else:
+        try:
+            from itertools import imap
+            map_function = imap
+        except ImportError:
+            # must be python 3
+            map_function = map
 
-        plm = peak_local_max(data, min_distance=min_distance)
-
-        if self.progress:
-            from tqdm import tqdm
-        else:
-            tqdm = _DummyTqdm
-        with tqdm(total=len(plm)) as pbar:
-            for item in map_function(maybe_contour_maximum, plm):
-                pbar.update(1)
-                if item is not None:
-                    yield item
+    plm = peak_local_max(data, min_distance=min_distance)
 
     # function to map
-    def maybe_contour_maximum(self,ji):
+    def maybe_contour_maximum(ji):
         tic = time()
         result = None
-        if self.proj:
+        if proj:
             contour_kwargs['proj_kwargs'] = {'lon0': lon[ji[1]],
                                              'lat0': lat[ji[0]],
                                              'dlon': dlon, 'dlat': dlat}
         else:
-            if 'proj_kwargs' in self.contour_kwargs:
+            if 'proj_kwargs' in contour_kwargs:
                 del contour_kwargs['proj_kwargs']
 
         #Slice data to reduce memory communication
-        data_slice=self.data[ji[0]-self.md:ji[0]+self.md,
-                        ji[1]-self.md:ji[1]+self.md]
+        data_slice=data[ji[0]-min_distance:ji[0]+min_distance,
+                        ji[1]-min_distance:ji[1]+min_distance]
 
         contour, area, cd = convex_contour_around_maximum(data_slice, 
-                                [self.md,self.md],
+                                [min_distance,min_distance],
                                 **contour_kwargs)
         if area and (area >= min_area):
             result = ji, contour, area, cd
         toc = time()
         logger.debug("point " + repr(tuple(ji)) + " took %g s" % (toc-tic))
         return result
+
+    
+
+    if progress:
+        from tqdm import tqdm
+    else:
+        tqdm = _DummyTqdm
+    with tqdm(total=len(plm)) as pbar:
+        for item in map_function(maybe_contour_maximum, plm):
+            pbar.update(1)
+            if item is not None:
+                yield item
 
     #if use_pool=='Process': 
     #    pool.terminate()
