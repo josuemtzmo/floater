@@ -407,7 +407,6 @@ def convex_contour_around_maximum(data, ji, init_contour_step_frac=0.1,
         contour[:, 1] += (i-border_i[0])
     return contour, region_area, cd
 
-
 def find_convex_contours(data, min_distance=5, min_area=100.,
                              use_pool=False, lon=None, lat=None,
                              progress=False, **contour_kwargs):
@@ -455,42 +454,8 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
     cd : float
         The actual convexity deficiency of the identified contour
     """
-
-    # do some checks on the coordinates if they are specified
-    if (lon is not None) or (lat is not None):
-        if not ((len(lat) == data.shape[0]) and (len(lon) == data.shape[1])):
-            raise ValueError('`lon` or `lat` have the incorrect length')
-        dlon = lon[1] - lon[0]
-        dlat = lat[1] - lat[0]
-        # make sure that the lon and lat are evenly spaced
-        if not (np.allclose(np.diff(lon), dlon) and
-                np.allclose(np.diff(lat), dlat)):
-            raise ValueError('`lon` and `lat` need to be evenly spaced')
-        proj = True
-    else:
-        proj = False
-
-    if use_pool=='Threads' or use_pool==True:
-        from multiprocessing.pool import ThreadPool
-        pool = ThreadPool()
-        map_function = pool.imap_unordered
-    elif use_pool=='Process':
-        from multiprocessing import Pool
-        import os
-        global maybe_contour_maximum
-        ncores = len(os.sched_getaffinity(0)) # Real number of cores
-        pool = Pool(ncores)
-        map_function=pool.imap_unordered
-    else:
-        try:
-            from itertools import imap
-            map_function = imap
-        except ImportError:
-            # must be python 3
-            map_function = map
-
-    plm = peak_local_max(data, min_distance=min_distance)
-
+    
+    global maybe_contour_maximum
     # function to map
     def maybe_contour_maximum(ji):
         tic = time()
@@ -514,14 +479,47 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
             result = ji, contour, area, cd
         toc = time()
         logger.debug("point " + repr(tuple(ji)) + " took %g s" % (toc-tic))
-        return result
+        return result   
 
-    
+    # do some checks on the coordinates if they are specified
+    if (lon is not None) or (lat is not None):
+        if not ((len(lat) == data.shape[0]) and (len(lon) == data.shape[1])):
+            raise ValueError('`lon` or `lat` have the incorrect length')
+        dlon = lon[1] - lon[0]
+        dlat = lat[1] - lat[0]
+        # make sure that the lon and lat are evenly spaced
+        if not (np.allclose(np.diff(lon), dlon) and
+                np.allclose(np.diff(lat), dlat)):
+            raise ValueError('`lon` and `lat` need to be evenly spaced')
+        proj = True
+    else:
+        proj = False
+
+    if use_pool=='Threads' or use_pool==True:
+        from multiprocessing.pool import ThreadPool
+        pool = ThreadPool()
+        map_function = pool.imap_unordered
+    elif use_pool=='Process':
+        from multiprocessing import Pool
+        import os
+        ncores = len(os.sched_getaffinity(0)) # Real number of cores
+        pool = Pool(ncores)
+        map_function=pool.imap_unordered
+    else:
+        try:
+            from itertools import imap
+            map_function = imap
+        except ImportError:
+            # must be python 3
+            map_function = map
+
+    plm = peak_local_max(data, min_distance=min_distance)
 
     if progress:
         from tqdm import tqdm
     else:
         tqdm = _DummyTqdm
+    
     with tqdm(total=len(plm)) as pbar:
         for item in map_function(maybe_contour_maximum, plm):
             pbar.update(1)
