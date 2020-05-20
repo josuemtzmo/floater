@@ -492,7 +492,7 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
 
     # function to map
     def maybe_contour_maximum(ji):
-        global contour_maximum
+        
 
         tic = time()
         result = None
@@ -517,12 +517,14 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
         logger.debug("point " + repr(tuple(ji)) + " took %g s" % (toc-tic))
         return result
 
+    global maybe_contour_maximum
+
     if progress:
         from tqdm import tqdm
     else:
         tqdm = _DummyTqdm
     with tqdm(total=len(plm)) as pbar:
-        for item in map_function(contour_maximum, plm):
+        for item in map_function(maybe_contour_maximum, plm):
             pbar.update(1)
             if item is not None:
                 yield item
