@@ -468,9 +468,9 @@ def find_convex_contours():
     
 
     def compute(self):
-        """
-        Compute identification of contours
-        """
+       """
+       Compute identification of contours
+       """
         # do some checks on the coordinates if they are specified
         if (self.lon is not None) or (self.lat is not None):
             if not ((len(self.lat) == self.data.shape[0]) and (len(self.lon) == self.data.shape[1])):
