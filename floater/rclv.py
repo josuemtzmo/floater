@@ -502,7 +502,12 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
             if 'proj_kwargs' in contour_kwargs:
                 del contour_kwargs['proj_kwargs']
 
-        contour, area, cd = convex_contour_around_maximum(data, ji,
+        #Slice data to reduce memory communication
+        data_slice=data[ji[0]-min_distance:ji[0]+min_distance,
+                        ji[1]-min_distance:ji[1]+min_distance]
+
+        contour, area, cd = convex_contour_around_maximum(data_slice, 
+                                [min_distance,min_distance],
                                 **contour_kwargs)
         if area and (area >= min_area):
             result = ji, contour, area, cd
@@ -519,6 +524,9 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
             pbar.update(1)
             if item is not None:
                 yield item
+
+    if use_pool=='Process': 
+        pool.terminate()
 
 
 class _DummyTqdm:
