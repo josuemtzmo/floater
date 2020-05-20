@@ -477,6 +477,7 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
     elif use_pool=='Process':
         from multiprocessing import Pool
         import os
+        global maybe_contour_maximum
         ncores = len(os.sched_getaffinity(0)) # Real number of cores
         pool = Pool(ncores)
         map_function=pool.imap_unordered
@@ -492,8 +493,6 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
 
     # function to map
     def maybe_contour_maximum(ji):
-        
-
         tic = time()
         result = None
         if proj:
@@ -517,7 +516,7 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
         logger.debug("point " + repr(tuple(ji)) + " took %g s" % (toc-tic))
         return result
 
-    global maybe_contour_maximum
+    
 
     if progress:
         from tqdm import tqdm
