@@ -477,7 +477,6 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
     elif use_pool=='Process':
         from multiprocessing import Pool
         import os
-        global maybe_contour_maximum
         ncores = len(os.sched_getaffinity(0)) # Real number of cores
         pool = Pool(ncores)
         map_function=pool.imap_unordered
@@ -490,34 +489,7 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
             map_function = map
 
     plm = peak_local_max(data, min_distance=min_distance)
-
-    # function to map
-    def maybe_contour_maximum(ji):
-        tic = time()
-        result = None
-        if proj:
-            contour_kwargs['proj_kwargs'] = {'lon0': lon[ji[1]],
-                                             'lat0': lat[ji[0]],
-                                             'dlon': dlon, 'dlat': dlat}
-        else:
-            if 'proj_kwargs' in contour_kwargs:
-                del contour_kwargs['proj_kwargs']
-
-        #Slice data to reduce memory communication
-        data_slice=data[ji[0]-min_distance:ji[0]+min_distance,
-                        ji[1]-min_distance:ji[1]+min_distance]
-
-        contour, area, cd = convex_contour_around_maximum(data_slice, 
-                                [min_distance,min_distance],
-                                **contour_kwargs)
-        if area and (area >= min_area):
-            result = ji, contour, area, cd
-        toc = time()
-        logger.debug("point " + repr(tuple(ji)) + " took %g s" % (toc-tic))
-        return result
-
     
-
     if progress:
         from tqdm import tqdm
     else:
@@ -530,6 +502,32 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
 
     #if use_pool=='Process': 
     #    pool.terminate()
+
+
+# function to map
+def maybe_contour_maximum(ji):
+    tic = time()
+    result = None
+    if proj:
+        contour_kwargs['proj_kwargs'] = {'lon0': lon[ji[1]],
+                                            'lat0': lat[ji[0]],
+                                            'dlon': dlon, 'dlat': dlat}
+    else:
+        if 'proj_kwargs' in contour_kwargs:
+            del contour_kwargs['proj_kwargs']
+
+    #Slice data to reduce memory communication
+    data_slice=data[ji[0]-min_distance:ji[0]+min_distance,
+                    ji[1]-min_distance:ji[1]+min_distance]
+
+    contour, area, cd = convex_contour_around_maximum(data_slice, 
+                            [min_distance,min_distance],
+                            **contour_kwargs)
+    if area and (area >= min_area):
+        result = ji, contour, area, cd
+    toc = time()
+    logger.debug("point " + repr(tuple(ji)) + " took %g s" % (toc-tic))
+    return result
 
 
 class _DummyTqdm:
