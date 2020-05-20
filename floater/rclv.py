@@ -525,8 +525,8 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
             if item is not None:
                 yield item
 
-    if use_pool=='Process': 
-        pool.terminate()
+    #if use_pool=='Process': 
+    #    pool.terminate()
 
 
 class _DummyTqdm:
