@@ -470,10 +470,15 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
     else:
         proj = False
 
-    if use_threadpool:
+    if use_pool=='Threads':
         from multiprocessing.pool import ThreadPool
         pool = ThreadPool()
         map_function = pool.imap_unordered
+    elif use_pool=='Process':
+        from multiprocessing import Pool,cpu_count
+        ncores = cpu_count()
+        pool = Pool(ncores)
+        map_function=pool.map
     else:
         try:
             from itertools import imap
@@ -618,3 +623,23 @@ def contour_ji_to_geo(contour_ji, lon, lat):
 
     contour_geo = np.array([x, y]).transpose()
     return contour_geo
+
+
+
+from multiprocessing import Pool,cpu_count
+import numpy as np
+
+def f(x):
+    sum=0
+    for ii in range(0,1000000000):
+        sum+=1
+    return sum
+
+ncores = cpu_count()
+pool = Pool(ncores)
+
+map_function=pool.map
+
+result=map_function(f, np.arange(ncores))
+
+print(result)
