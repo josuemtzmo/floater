@@ -409,7 +409,7 @@ def convex_contour_around_maximum(data, ji, init_contour_step_frac=0.1,
 
 
 def find_convex_contours(data, min_distance=5, min_area=100.,
-                             use_threadpool=False, lon=None, lat=None,
+                             use_pool=False, lon=None, lat=None,
                              progress=False, **contour_kwargs):
     """Find the outermost convex contours around the maxima of
     data with specified convexity deficiency.
@@ -470,7 +470,7 @@ def find_convex_contours(data, min_distance=5, min_area=100.,
     else:
         proj = False
 
-    if use_pool=='Threads':
+    if use_pool=='Threads' or use_pool:
         from multiprocessing.pool import ThreadPool
         pool = ThreadPool()
         map_function = pool.imap_unordered
